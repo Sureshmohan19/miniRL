@@ -1,11 +1,14 @@
 """miniRL.spaces.box"""
 
 from collections.abc import Iterable
-from typing import Any, SupportsFloat, Sequence
+from typing import Any, SupportsFloat, Sequence, Union
 from miniRL.spaces import Space
 import numpy as np
 from numpy.typing import NDArray
 import warnings
+
+LHValType = SupportsFloat | NDArray[Any]
+MinMaxType = Union[int, float]
 
 __all__ = ["Box"]
 
@@ -23,7 +26,7 @@ class Box(Space[NDArray[Any]]):
             dtype: type[np.floating[Any]] | type[np.integer[Any]] = np.float32,
     ):
         """Initialize the box space"""
-        self._dtype = np.dtype(dtype)
+        self._dtype: np.dtype[Any] = np.dtype(dtype)
         if not (np.issubdtype(self._dtype, np.floating) or np.issubdtype(self._dtype, np.integer) or self._dtype == np.bool_):
             raise ValueError(f"Box dtype must be one of integer, floating or bool type but got {self._dtype}")
         
@@ -51,14 +54,17 @@ class Box(Space[NDArray[Any]]):
 
         self._shape: tuple[int, ...] = shape
 
-        if self.dtype == np.bool_:
+        dtype_min: MinMaxType
+        dtype_max: MinMaxType
+
+        if self._dtype == np.bool_:
             dtype_min, dtype_max = 0, 1
-        elif np.issubdtype(self.dtype, np.floating):
-            dtype_min, dtype_max = float(np.finfo(self.dtype).min), float(np.finfo(self.dtype).max)
-        elif np.issubdtype(self.dtype, np.integer):
-            dtype_min, dtype_max = int(np.iinfo(self.dtype).min), int(np.iinfo(self.dtype).max)
+        elif np.issubdtype(self._dtype, np.floating):
+            dtype_min, dtype_max = float(np.finfo(self._dtype).min), float(np.finfo(self._dtype).max)
+        elif np.issubdtype(self._dtype, np.integer):
+            dtype_min, dtype_max = int(np.iinfo(self._dtype).min), int(np.iinfo(self._dtype).max)
         else:
-            raise ValueError(f"Box space dtype must be one of integer, floating or bool type but got {self.dtype}")
+            raise ValueError(f"Box space dtype must be one of integer, floating or bool type but got {self._dtype}")
         
         self.low, self.bounded_below = self._validate_low(low, dtype_min)
         self.high, self.bounded_above = self._validate_high(high, dtype_max)
@@ -74,11 +80,15 @@ class Box(Space[NDArray[Any]]):
         
         super().__init__(shape=self.shape, dtype=self.dtype, seed=seed)
 
-    def _validate_low(self, low, dtype_min) -> tuple[np.ndarray, np.ndarray]:
+    def _validate_low(
+            self, 
+            low: LHValType, 
+            dtype_min: MinMaxType
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Validate the low bound of the box space"""
         
         if float_or_int(low):
-            low = np.full(self._shape, low, dtype=self.dtype)
+            low = np.full(self._shape, low, dtype=self._dtype)
 
         # now low must be an array
         if not isinstance(low, np.ndarray):
@@ -93,24 +103,28 @@ class Box(Space[NDArray[Any]]):
         bounded_below = -np.inf < low
 
         if np.any(np.isneginf(low)):
-            if self.dtype.kind == "i":
+            if self._dtype.kind == "i":
                 low[np.isneginf(low)] = dtype_min # replace negative infinity with the minimum value of the dtype
-            elif self.dtype.kind in {"u", "b"}:
+            elif self._dtype.kind in {"u", "b"}:
                 raise ValueError(f"Box space low must not contain negative infinity values for unsigned or boolean dtype")
             
-        if low.dtype != self.dtype and np.any(low < dtype_min):    
+        if low.dtype != self._dtype and np.any(low < dtype_min):    
             raise ValueError(f"Box space low must not contain values less than {dtype_min} for dtype={low.dtype}")
             
-        if (np.issubdtype(low.dtype, np.floating) and np.issubdtype(self.dtype, np.floating) and np.finfo(self.dtype).precision < np.finfo(low.dtype).precision):
-            warnings.warn(f"Box space low dtype has been downcasted to {self.dtype} from {low.dtype} which will lead to precision loss")
+        if (np.issubdtype(low.dtype, np.floating) and np.issubdtype(self._dtype, np.floating) and np.finfo(self._dtype).precision < np.finfo(low.dtype).precision):
+            warnings.warn(f"Box space low dtype has been downcasted to {self._dtype} from {low.dtype} which will lead to precision loss")
 
-        return low.astype(self.dtype), bounded_below
+        return low.astype(self._dtype), bounded_below
         
-    def _validate_high(self, high, dtype_max) -> tuple[np.ndarray, np.ndarray]:
+    def _validate_high(
+            self, 
+            high: LHValType, 
+            dtype_max: MinMaxType
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Validate the high bound of the box space"""
         
         if float_or_int(high):
-            high = np.full(self._shape, high, dtype=self.dtype)
+            high = np.full(self._shape, high, dtype=self._dtype)
 
         # now high must be an array
         if not isinstance(high, np.ndarray):
@@ -125,22 +139,22 @@ class Box(Space[NDArray[Any]]):
         bounded_above = np.inf > high
 
         if np.any(np.isposinf(high)):
-            if self.dtype.kind == "i":
+            if self._dtype.kind == "i":
                 high[np.isposinf(high)] = dtype_max # replace positive infinity with the maximum value of the dtype
-            elif self.dtype.kind in {"u", "b"}:
+            elif self._dtype.kind in {"u", "b"}:
                 raise ValueError(f"Box space high must not contain positive infinity values for unsigned or boolean dtype")
             
-        if high.dtype != self.dtype and np.any(high > dtype_max):
+        if high.dtype != self._dtype and np.any(high > dtype_max):
             raise ValueError(f"Box space high must not contain values greater than {dtype_max} for dtype={high.dtype}")
             
-        if (np.issubdtype(high.dtype, np.floating) and np.issubdtype(self.dtype, np.floating) and np.finfo(self.dtype).precision < np.finfo(high.dtype).precision):
-            warnings.warn(f"Box space high dtype has been downcasted to {self.dtype} from {high.dtype} which will lead to precision loss")
+        if (np.issubdtype(high.dtype, np.floating) and np.issubdtype(self._dtype, np.floating) and np.finfo(self._dtype).precision < np.finfo(high.dtype).precision):
+            warnings.warn(f"Box space high dtype has been downcasted to {self._dtype} from {high.dtype} which will lead to precision loss")
 
-        return high.astype(self.dtype), bounded_above
+        return high.astype(self._dtype), bounded_above
         
     def sample(self) -> NDArray[Any]:
         """Sample a random value from the box space."""
-        high = self.high if self.dtype.kind == "f" else self.high.astype("int64") + 1
+        high = self.high if self._dtype.kind == "f" else self.high.astype("int64") + 1
         sample = np.empty(self.shape)
 
         unbounded = ~self.bounded_below & ~self.bounded_above
@@ -153,21 +167,21 @@ class Box(Space[NDArray[Any]]):
         sample[upper_bounded] = (-self.np_random.exponential(size=upper_bounded[upper_bounded].shape) + high[upper_bounded])
         sample[bounded] = self.np_random.uniform(low=self.low[bounded], high=high[bounded], size=bounded[bounded].shape)
 
-        if self.dtype.kind in ["i", "u", "b"]:
+        if self._dtype.kind in ["i", "u", "b"]:
             sample = np.floor(sample)
 
-        if np.issubdtype(self.dtype, np.signedinteger):
-            dtype_min = np.iinfo(self.dtype).min + 2
-            dtype_max = np.iinfo(self.dtype).max - 2
+        if np.issubdtype(self._dtype, np.signedinteger):
+            dtype_min = np.iinfo(self._dtype).min + 2
+            dtype_max = np.iinfo(self._dtype).max - 2
             sample = sample.clip(min=dtype_min, max=dtype_max)
-        elif np.issubdtype(self.dtype, np.unsignedinteger):
-            dtype_min = np.iinfo(self.dtype).min
-            dtype_max = np.iinfo(self.dtype).max
+        elif np.issubdtype(self._dtype, np.unsignedinteger):
+            dtype_min = np.iinfo(self._dtype).min
+            dtype_max = np.iinfo(self._dtype).max
             sample = sample.clip(min=dtype_min, max=dtype_max)
 
-        sample = sample.astype(self.dtype)
+        sample = sample.astype(self._dtype)
 
-        if self.dtype == np.int64:
+        if self._dtype == np.int64:
             sample = sample.clip(min=self.low, max=self.high)
 
         return sample
@@ -178,7 +192,7 @@ class Box(Space[NDArray[Any]]):
         return self._shape
     
     @property
-    def dtype(self) -> np.dtype:
+    def dtype(self) -> np.dtype[Any]:
         """Get the dtype of the box space."""
         return self._dtype
     

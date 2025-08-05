@@ -7,7 +7,7 @@ import numpy as np
 
 from miniRL import spaces
 from miniRL.types import ObsType, ActType
-from miniRL.utils import seeding
+from miniRL.utils import np_random
 
 class Env(ABC, Generic[ObsType, ActType]):
     metadata: dict[str, Any]
@@ -34,7 +34,7 @@ class Env(ABC, Generic[ObsType, ActType]):
     ) -> tuple[ObsType, dict[str, Any]]:
         """Reset the environment"""
         if seed is not None:
-            self._np_random, self._np_random_seed = seeding.np_random(seed)
+            self._np_random, self._np_random_seed = np_random(seed)
         
         raise NotImplementedError
 
@@ -42,7 +42,7 @@ class Env(ABC, Generic[ObsType, ActType]):
         """Render the environment if needed and possible"""
         raise NotImplementedError
     
-    def close(self):
+    def close(self) -> None:
         """Close the environment"""
         pass
 
@@ -50,7 +50,7 @@ class Env(ABC, Generic[ObsType, ActType]):
     def np_random_seed(self) -> int:
         """Returns random seed"""
         if self._np_random_seed is None:
-            self._np_random, self._np_random_seed = seeding.np_random()
+            self._np_random, self._np_random_seed = np_random()
         
         return self._np_random_seed
     
@@ -58,7 +58,7 @@ class Env(ABC, Generic[ObsType, ActType]):
     def np_random(self) -> np.random.Generator:
         """Returns random number"""
         if self._np_random is None:
-            self._np_random, self._np_random_seed = seeding.np_random()
+            self._np_random, self._np_random_seed = np_random()
         
         return self._np_random
     
@@ -66,7 +66,7 @@ class Env(ABC, Generic[ObsType, ActType]):
     def np_random(
         self, 
         value: np.random.Generator
-    ):
+    ) -> None:
         """Set the random generator with user provided Generator"""
         self._np_random = value
         self._np_random_seed = -1

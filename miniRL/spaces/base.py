@@ -5,7 +5,7 @@ from typing import Any, Sequence, Generic
 import numpy as np
 from numpy.typing import DTypeLike
 
-from miniRL.utils import seeding
+from miniRL.utils import np_random
 from miniRL.types import SpaType
 
 __all__ = ["Space"]
@@ -35,16 +35,17 @@ class Space(Generic[SpaType]):
             self.seed()
 
         if self._np_random is None:
-            self._np_random, _ = seeding.np_random()
+            self._np_random, _ = np_random()
 
         return self._np_random
     
     def seed(self, seed: int | None = None) -> int:
         """Seed the PRNG"""
-        self._np_random, np_random_seed = seeding.np_random(seed)
+        self._np_random, np_random_seed = np_random(seed)
+        assert isinstance(np_random_seed, int), "seeding did not return a valid python int type"
         return np_random_seed
 
-    def sample(self):
+    def sample(self) -> SpaType:
         """Sample a random element from the space."""
         raise NotImplementedError
     
@@ -54,7 +55,7 @@ class Space(Generic[SpaType]):
         return self._shape
     
     @property
-    def dtype(self) -> np.dtype | None:
+    def dtype(self) -> np.dtype[Any] | None:
         """Return the dtype of the space."""
         return self._dtype
     

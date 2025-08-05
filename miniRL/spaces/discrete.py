@@ -22,10 +22,11 @@ class Discrete(Space[np.int64]):
         self.start = np.int64(start)
 
         super().__init__(shape=(), dtype=np.int64, seed=seed)
-
+        self._dtype: np.dtype[Any] = self._dtype    
+        
     def sample(self) -> np.int64:
         """Sample a random element from the space."""
-        return self.start + self.np_random.integers(self.n)
+        return np.int64(self.start + self.np_random.integers(self.n))
     
     def contains(self, x: Any) -> bool:
         """Check if a value is a valid element of the space."""
@@ -37,6 +38,11 @@ class Discrete(Space[np.int64]):
             return False
         
         return bool(self.start <= x_as_int64 < self.start + self.n)
+    
+    @property
+    def dtype(self) -> np.dtype[Any]:
+        """Get the dtype of discrete space"""
+        return self._dtype
     
     def __repr__(self) -> str:
         """Return a string representation of the space."""

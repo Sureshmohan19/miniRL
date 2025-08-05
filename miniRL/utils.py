@@ -1,6 +1,4 @@
-"""miniRL.utils.seeding"""
-
-"""The seeding module provides a unified interface for seeding the PRNGs of spaces and environments."""
+"""miniRL.utils"""
 
 import numpy as np
 
@@ -10,5 +8,8 @@ def np_random(seed: int | None = None) -> tuple[np.random.Generator, int]:
         raise ValueError("Seed must be a non-negative integer")
     
     seed_seq = np.random.SeedSequence(seed)
+    entropy = seed_seq.entropy
+    assert isinstance(entropy, int), f"Expected a python integer for seed entropy value, but got {type(entropy)}"
     rng = np.random.Generator(np.random.PCG64(seed_seq))
-    return rng, seed_seq.entropy
+    
+    return rng, entropy
