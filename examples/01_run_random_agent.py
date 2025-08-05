@@ -11,13 +11,10 @@ class RandomAgent:
         return self.action_space.sample()
 
 if __name__ == "__main__":
-    # 1. Create the environment and agent
     env = LineWorldEnv()
     agent = RandomAgent(env.action_space)
     
-    # 2. Reset the environment to get the first observation
     observation, info = env.reset(seed=42)
-    
     terminated, truncated = False, False
     print("--- Running Random Agent ---")
     env.render()
@@ -28,10 +25,8 @@ if __name__ == "__main__":
         action = agent.get_action(observation)
         print(f"Action taken: {'Left' if action == 0 else 'Right'}")
         
-        # Take a step in the environment
+        # Take a step in the environment and render
         observation, reward, terminated, truncated, info = env.step(action)
-        
-        # Render the new state
         env.render()
         
     print("\nEpisode finished!")

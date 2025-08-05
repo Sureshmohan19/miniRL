@@ -8,18 +8,13 @@ class LineWorldEnv(Env[int, int]):
         self.agent_pos = 0
 
         # The agent's position on the line (0 to size-1)
-        self.observation_space = Discrete(self.size)
         # The agent's actions: 0 for left, 1 for right
+        self.observation_space = Discrete(self.size)
         self.action_space = Discrete(2)
 
     def reset(self, *, seed: int | None = None, options: dict | None = None) -> tuple[int, dict]:
-        # We must call super() to handle seeding
         super().reset(seed=seed)
-        
-        # Reset the agent to the middle of the line
         self.agent_pos = self.size // 2
-        
-        # Return the initial observation and an empty info dict
         return self.agent_pos, {}
 
     def step(self, action: int) -> tuple[int, float, bool, bool, dict]:
