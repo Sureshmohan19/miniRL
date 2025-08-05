@@ -33,10 +33,9 @@ class Env(ABC, Generic[ObsType, ActType]):
         options: dict[str, Any] | None = None
     ) -> tuple[ObsType, dict[str, Any]]:
         """Reset the environment"""
+        #mypy will complain about the missing return statement here but subclasses will implement these ones. 
         if seed is not None:
             self._np_random, self._np_random_seed = np_random(seed)
-        
-        raise NotImplementedError
 
     def render(self) -> None:
         """Render the environment if needed and possible"""
