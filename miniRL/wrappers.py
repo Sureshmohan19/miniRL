@@ -22,14 +22,21 @@ class StepLimit(miniRL.Wrapper[ObsType, ActType, ObsType, ActType]):
         assert isinstance (max_steps, int) and max_steps > 0, f"max_steps parameter in StepLimit wrapper needs a valid python integer input and should be above 0"
 
         super().__init__(env=env)
+
+        if not isinstance(max_steps, int) or max_steps <= 0:
+            raise ValueError(f"max_steps must be a positive integer, but got {max_steps}")
+
         self._max_steps = max_steps 
-        self._elapsed_steps: int = 0
+        self._elapsed_steps: int | None = None
 
     def step(
             self, 
             action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Take a step using the provided action and increment the elapsed steps counter"""
+        if self._elapsed_steps is None:
+            raise RuntimeError("Cannot call `step` before the first `reset`. Call `env.reset()` first.")
+        
         observation, reward, terminated, truncated, info = self.env.step(action)
         self._elapsed_steps += 1
 
