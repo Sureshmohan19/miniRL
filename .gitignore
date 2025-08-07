@@ -7,6 +7,10 @@ examples/
 *.pyd
 __pycache__/
 
+# mypy cache
+*.mypy_cache
+.mypy_cache/
+
 # Distribution / packaging
 .Python
 build/
