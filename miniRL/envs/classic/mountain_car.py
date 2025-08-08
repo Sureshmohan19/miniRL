@@ -77,7 +77,7 @@ class MountainCar(Env):
         return np.array(self.state, dtype=np.float32), {}
     
     def render(self):
-        """Only supports rgb array for now"""
+        """Render the environment. Only rgb_array supported at the momen"""
         if self.render_mode != "rgb_array":
             raise ValueError(f"Unsupported render mode: {self.render_mode}. Only 'rgb_array' is currently supported.")
                 
