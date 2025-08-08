@@ -7,4 +7,5 @@
 5. [done] register and make function
 6. [done] made mountaincar env (from gymnasium)
 7. [done] tested the custom env using a file run
-8. [next] write tests for the already written files
+8. [done] write tests for the already written files
+9. [next] writing cartpole env
