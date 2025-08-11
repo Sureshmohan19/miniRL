@@ -14,7 +14,11 @@ class MountainCar(Env):
     """Exact implementation of MountainCarEnv by Gymnasium library. 
     The only difference is human render mode is completely removed and only supports RGB."""
 
-    def __init__(self, render_mode: str = "rgb_array", goal_velocity: int = 0):
+    def __init__(
+            self, 
+            render_mode: str = "rgb_array", 
+            goal_velocity: int = 0
+    ):
         """Initialise the environment"""
         self.min_position = -1.2
         self.max_position = 0.6

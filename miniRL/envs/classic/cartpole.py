@@ -41,6 +41,8 @@ class CartPole(Env[np.ndarray, Union[int, np.ndarray]]):
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
         self.render_mode = render_mode
+        self.screen_width = 600
+        self.screen_height = 400
         self.isopen = True
         self.state: np.ndarray | None = None
         self.steps_beyond_terminated = None
@@ -104,7 +106,7 @@ class CartPole(Env[np.ndarray, Union[int, np.ndarray]]):
         """Reset the environment"""
         super().reset(seed=seed, options=options)
         low, high = utils.parse_reset_bound(options=options, default_low=-0.05, default_high=0.05)
-        self.state = self.np_random.uniform(low=low, high=high, size=(4,1))
+        self.state = self.np_random.uniform(low=low, high=high, size=(4,))
         self.steps_beyond_terminated = None
 
         return np.array(self.state, dtype=np.float32), {}
