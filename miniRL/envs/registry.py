@@ -4,11 +4,19 @@ import inspect
 import importlib
 import warnings
 import copy
+from enum import Enum
 from typing import Any, Set, Type, cast
 
 from miniRL.core import Env
+from miniRL.vectors import VectorEnv, SyncVectorEnv, AutoReset
 
-__all__ = ["EnvironmentRegistry", "EnvSpec"]
+__all__ = ["EnvironmentRegistry", "EnvSpec", "VectorizationMode"]
+
+class VectorizationMode(Enum):
+        """Possible vectorization mode"""
+        ASYNC = "async"
+        SYNC = "sync"
+        VECTOR_ENTRY_POINT ="vector_entry_point"
 
 class EnvSpec():
     """Simple class to hold the specification for the environments"""
@@ -16,6 +24,7 @@ class EnvSpec():
             self,
             name: str,
             entry_point: str | None = None,
+            vector_entry_point: str | None = None,
             description: str = "",
             max_steps: int | None = None,
             kwargs: dict | None = None,
@@ -24,13 +33,17 @@ class EnvSpec():
         assert (entry_point is not None), f"entry_point cannot be empty. It should be in the format of module_name:class_name"
         self.name = name
         self.entry_point = entry_point
+        self.vector_entry_point = vector_entry_point
         self.description = description
         self.max_steps = max_steps
         self.kwargs = {} if kwargs is None else kwargs
 
     def __repr__(self) -> str:
         """String representation of the EnvSpec"""
-        return f"EnvSpec(name='{self.name}', entry_point='{self.entry_point}')"
+        if self.entry_point:
+            return f"EnvSpec(name='{self.name}', entry_point='{self.entry_point}')"
+        else:
+            return f"EnvSpec(name='{self.name}', vector_entry_point='{self.vector_entry_point}')"
 
 class EnvironmentRegistry():
     """Registry for managing miniRL environments."""
@@ -42,17 +55,20 @@ class EnvironmentRegistry():
             self, 
             name: str,
             entry_point: str | None = None,
+            vector_entry_point: str | None = None,
             description: str = "",
             max_steps: int | None = None,
             kwargs: dict | None = None
     ) -> None:
         """Register the environment class to the registry"""
+        assert (entry_point is not None or vector_entry_point is not None), f"Either entry_point or vector_entry_point must be provided"
         if name in self._specs:
             raise ValueError(f"Environment {name} already registered.")
         
         new_spec = EnvSpec(
             name=name,
             entry_point=entry_point,
+            vector_entry_point=vector_entry_point,
             description=description,
             max_steps=max_steps,
             kwargs=kwargs
@@ -77,6 +93,7 @@ class EnvironmentRegistry():
                              f"Please register or try listing out available environments using {list(self._specs.keys())}")
         
         spec = self._specs[name]
+        assert isinstance(spec, EnvSpec)
         spec_kwargs = copy.deepcopy(spec.kwargs)
         spec_kwargs.update(kwargs)
 
@@ -85,13 +102,18 @@ class EnvironmentRegistry():
             spec_kwargs.pop("metadata", None)
 
         env_reg = self.get_environment_class(name)
-
         self._validate_params(env_reg, spec_kwargs, name)
+
+        if spec.entry_point is None:
+            raise ValueError(f"{spec.name} somehow registed without entry point.")
 
         try:
             env = env_reg(**spec_kwargs)
         except Exception as e:
             raise RuntimeError(f"Failed to create environment:{name} with params:{spec_kwargs}. Instead got {e}")  
+        
+        if not isinstance(env, Env):
+            raise TypeError(f"The environment must inherit from miniRL.Env class but actually got {type(env)}")
         
         # step-limit
         act_max_steps = spec.max_steps if max_steps is None else max_steps
@@ -99,6 +121,110 @@ class EnvironmentRegistry():
         if act_max_steps is not None and act_max_steps > 0:
             from miniRL.wrappers import StepLimit
             env = StepLimit(env, max_steps=act_max_steps)
+        
+        return env
+    
+    def make_vec(
+            self, 
+            name: str,
+            num_envs: int = 1,
+            vectorization_mode: VectorizationMode | None = None,
+            vector_kwargs: dict[str, Any] | None = None,
+            **kwargs: Any,
+        ) -> VectorEnv:
+        """Create a vectorized environment instance ."""
+        if isinstance(name, EnvSpec):
+            warnings.warn(f"cannot make an environment using EnvSpec at this momemt" 
+                          f"Have to use miniRL.register to register the environment")
+        
+        assert isinstance(name, str)
+        if name not in self._specs:
+            raise ValueError(f"Environment {name} not found." 
+                             f"Please register or try listing out available environments using {list(self._specs.keys())}")
+        
+        if vector_kwargs is None:
+            vector_kwargs = {}
+        
+        spec = self._specs[name]
+        assert isinstance(spec, EnvSpec)
+        spec_kwargs = copy.deepcopy(spec.kwargs)
+        spec.kwargs = dict()
+
+        # get items from kwargs from make_env
+        num_envs = spec_kwargs.pop("num_envs", num_envs)
+        vectorization_mode = spec_kwargs.pop("vectorization_mode", vectorization_mode)
+        vector_kwargs = spec_kwargs.pop("vector_kwargs", vector_kwargs)
+
+        spec_kwargs.update(kwargs)
+
+        # vectorization mode
+        if vectorization_mode is None:
+            if spec.vector_entry_point is not None:
+                vectorization_mode = VectorizationMode.VECTOR_ENTRY_POINT
+            else:
+                vectorization_mode = VectorizationMode.SYNC
+        else:
+            assert vectorization_mode in (VectorizationMode.SYNC, VectorizationMode.ASYNC), f"vectorization mode must be a type of VectorizationMode class"
+            vectorization_mode = VectorizationMode(vectorization_mode)
+
+        assert isinstance(vectorization_mode, VectorizationMode)
+
+        def create_single_instance() -> Env:
+            """Create single instances for parallel envs"""
+            single_env = self.make(spec.name, **spec_kwargs.copy())
+
+            return single_env
+
+        # actual logic
+        if vectorization_mode == VectorizationMode.SYNC:
+            if spec.entry_point is None:
+                raise ValueError(f"Cannot create SyncVector environent when entry_point is not provided")
+            
+            env = SyncVectorEnv(
+                env_fns=[lambda: create_single_instance() for _ in range(num_envs)], 
+                **vector_kwargs)
+        
+        elif vectorization_mode == VectorizationMode.ASYNC:
+            if spec.entry_point is None:
+                raise ValueError(f"Cannot create AsyncVector environment when entry_point is not provided")
+            
+            raise TypeError(f"Using AsyncVectorEnv is not developed at this moment")
+        
+        elif vectorization_mode == VectorizationMode.VECTOR_ENTRY_POINT:
+            if len(vector_kwargs) > 0:
+                raise ValueError(f"Custom environment kwargs are provided through kwargs and not through vector_kwargs.")
+            
+            entry_point_vector = spec.vector_entry_point
+            assert isinstance (entry_point_vector, str), f"vector_entry_point must be provided as a valid python string"
+            assert entry_point_vector is not None, f"Cannot create custom vectorised enviornment when vector_entry_point is None"
+
+            mod_name, attr_name = entry_point_vector.split(":")
+            mod = importlib.import_module(mod_name)
+            env_vec = getattr(mod, attr_name)
+
+            if (spec.max_steps is not None and "max_steps" not in spec_kwargs):
+                spec_kwargs["max_steps"] = spec.max_steps
+
+            env = env_vec(num_envs, **spec_kwargs)
+        
+        else: 
+            raise ValueError(f"Unknown vectorised mode: {vectorization_mode}")
+        
+        # additional workings
+        copied_spec = copy.deepcopy(spec)
+        copied_spec_kwargs = spec_kwargs.copy()
+        copied_spec.kwargs["vectorization_mode"] = vectorization_mode.value
+        if num_envs != 1:
+            copied_spec.kwargs["num_envs"] = num_envs
+        if len(vector_kwargs) > 0:
+            copied_spec.kwargs["vector_kwargs"] = vector_kwargs
+        env.unwrapped.spec = copied_spec
+
+        # finally check autoreset in the env
+        if "autoreset" not in env.metadata:
+            warnings.warn(f"The VectorEnv {env} is missing autoreset parameter")
+        elif not isinstance(env.metadata["autoreset"], AutoReset):
+            warnings.warn(f"The VectorEnv {env} metadata['autoreset'] is not an instance of AutoReset Enum class")
         
         return env
     

@@ -16,7 +16,7 @@ from miniRL.utils import (
     np_random, 
     batch_space, 
     batch_different_space, 
-    is_space_dtype_shape_equiv, 
+    is_space_dtype_shape_equiv,
     create_empty_array,
     concatenate,
     iterate
@@ -43,16 +43,17 @@ class VectorEnv(Generic[ObsType, ActType, ArrayType]):
 
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[ObsType, dict[str, Any]]:
         """Reset all parallel environments and return a batch of initial observations and info"""
-        if seed is None:
+        if seed is not None:
             self._np_random, self._np_random_seed = np_random(seed=seed)
+        raise NotImplementedError(f"{self.__str__} reset method is not implememted")
 
     def step(self, action: ActType) -> tuple[ObsType, ArrayType, ArrayType, ArrayType, dict[str, Any]]:
         """Take an action in each parallel environment"""
-        raise NotImplementedError(f"{self.__str__} step function is not implemented")
+        raise NotImplementedError(f"{self.__str__} step method is not implemented")
 
     def render(self) -> None:
         """Returns the rendered frame from each parallel environments"""
-        raise NotImplementedError(f"{self.__str__} render function is not implemented")
+        raise NotImplementedError(f"{self.__str__} render method is not implemented")
 
     def close(self, **kwargs:Any) -> None:
         """Close all parallel environments"""
@@ -181,7 +182,7 @@ class SyncVectorEnv(VectorEnv):
                 self.single_observation_space = self.envs[0].observation_space
                 self.observation_space = batch_space(self.single_observation_space, self.num_envs)
             elif observation_mode == "different":
-                self.single_action_space = self.envs[0].observation_space
+                self.single_observation_space = self.envs[0].observation_space
                 self.observation_space = batch_different_space([env.observation_space for env in self.envs])
             else:
                 raise ValueError(f"Invalid observation mode: {observation_mode} provided.")
@@ -189,20 +190,20 @@ class SyncVectorEnv(VectorEnv):
         for env in self.envs:
             if observation_mode == "same":
                 assert(env.observation_space == self.single_observation_space
-                ), f"SyncVector(..., observation_mode='same') sub-environments observation spaces are not equal."
-                f"single_observation_space={self.single_action_space}, but sub-environment space={env.observation_space}.
-                Either use observation_mode='different' or check the spaces"
+                ), (f"SyncVector(..., observation_mode='same') sub-environments observation spaces are not equal. " 
+                    f"single_observation_space={self.single_observation_space}, but sub-environment space={env.observation_space}. " 
+                    f"Either use observation_mode='different' or check the spaces")
             else:
                 assert is_space_dtype_shape_equiv(env.observation_space, self.single_observation_space
-                ), f"SyncVector(..., observation_mode='different') sub-environments dtype and shape are not equivalent."
-                f"single_observation_space={self.single_observation_space} and sub-environment_space={env.observation_space}"
+                ), (f"SyncVector(..., observation_mode='different') sub-environments dtype and shape are not equivalent. " 
+                    f"single_observation_space={self.single_observation_space} and sub-environment_space={env.observation_space}")
             assert (env.action_space == self.single_action_space
             ), f"Sub-environment action space={env.action_space} is not equal to single_action_space={self.single_action_space}"
 
 
         # attributes
         self._env_obs = [None for _ in range(self.num_envs)]
-        self._observation = create_empty_array(self.single_observation_space, n=self.num_envs, fn=np.zeros)
+        self._observations = create_empty_array(self.single_observation_space, n=self.num_envs, fn=np.zeros)
         self._rewards = np.zeros((self.num_envs,), dtype=np.float64)
         self._termination = np.zeros((self.num_envs,), dtype=np.bool_)
         self._truncation = np.zeros((self.num_envs,), dtype=np.bool_)
@@ -228,7 +229,7 @@ class SyncVectorEnv(VectorEnv):
         if options is not None and "reset_mask" in options:
             reset_mask = options.pop("reset_mask")
             assert isinstance(reset_mask, np.ndarray), f"if reset_mask provided, which is, it should be an np.ndarray"
-            assert (reset_mask.shape == self.num_envs), f"reset_mask shape: {reset_mask.shape} must match with self.num_envs:{self.num_env}"
+            assert (reset_mask.shape == (self.num_envs,)), f"reset_mask shape: {reset_mask.shape} must match with self.num_envs:{self.num_envs}"
             assert (reset_mask.dtype == np.bool_), f"reset_mask should be a np.bool_ type instead of the given {reset_mask.dtype}"
             assert np.any(reset_mask), f"reset_mask must atleast one True element in its array"
 
@@ -256,9 +257,9 @@ class SyncVectorEnv(VectorEnv):
                 infos = self._add_info(vector_info=infos, env_info=env_info, env_num=i)
 
         # concatenate into one
-        self._observation = concatenate(self.single_observation_space, self._env_obs, self._observation)
+        self._observations = concatenate(self.single_observation_space, self._env_obs, self._observations)
 
-        return deepcopy(self._observation) if self.copy else self._observation, infos
+        return deepcopy(self._observations) if self.copy else self._observations, infos
     
     def step(self, actions: ActType) -> tuple[ObsType, ArrayType, ArrayType, ArrayType, dict[str, Any]]:
         """Take a step in each sub-env and return a tuple"""
@@ -372,11 +373,12 @@ class SyncVectorEnv(VectorEnv):
             fns = env.get_wrapper_attr(name)
 
             if callable(fns):
-                results.append(function(*args, **kwargs))
+                results.append(fns(*args, **kwargs))
             else:
                 results.append(fns)
 
         return tuple(results)
 
 class AsyncVectorEnv():
-    raise NotImplementedError(f"AsyncVector hasn't been implemented so far")
+    def __init__(self) -> None:
+        raise NotImplementedError(f"AsyncVector hasn't been implemented so far")
