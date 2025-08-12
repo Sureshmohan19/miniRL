@@ -8,18 +8,6 @@ from copy import deepcopy
 from miniRL.spaces import Space, Box, Discrete
 from miniRL.types import SpaType
 
-def np_random(seed: int | None = None) -> tuple[np.random.Generator, int]:
-    """Create a new PRNG and return it along with the seed"""
-    if seed is not None and not (isinstance(seed, int) and seed >= 0):
-        raise ValueError("Seed must be a non-negative integer")
-    
-    seed_seq = np.random.SeedSequence(seed)
-    entropy = seed_seq.entropy
-    assert isinstance(entropy, int), f"Expected a python integer for seed entropy value, but got {type(entropy)}"
-    rng = np.random.Generator(np.random.PCG64(seed_seq))
-    
-    return rng, entropy
-
 def parse_reset_bound(
         default_low: float, 
         default_high: float,
@@ -108,10 +96,10 @@ def is_space_dtype_shape_equiv(space_1: Space, space_2: Space) -> bool:
         raise NotImplementedError(f"need to specify particular miniRL.Space and generic one doesn't work")
     
 @is_space_dtype_shape_equiv.register(Box)
-@is_space_dtype_shape_equiv(Discrete)
-def _is_space_dtype_shape_equiv_box_discrete(space_1: Space, space_2: Space):
+@is_space_dtype_shape_equiv.register(Discrete)
+def _is_space_dtype_shape_equiv_box_discrete(space_1: Box | Discrete, space_2: Box | Discrete):
     """Check whether two spaces dtypes and shapes are equivalent - for box and discrete"""
-    are_they = type(space_1) is type(space_2) and space_1.shape == space_2.shape and space_1.dtype == space_2.dtype
+    are_they = (type(space_1) is type(space_2) and space_1.shape == space_2.shape and space_1.dtype == space_2.dtype)
     return are_they
 
 @singledispatch

@@ -14,8 +14,8 @@ class CartPole(Env[np.ndarray, Union[int, np.ndarray]]):
     """CartPoleEnv implementation from gymnasium.envs.classic_control but supports only rgb_array rendering"""
     def __init__(
             self,
-            sutton_barto_reward: bool = False,
             render_mode: str = "rgb_array",
+            sutton_barto_reward: bool = False,
     ):
         """Initialise the CartPole env as an instance of Env"""
         self._sutton_barto_reward = sutton_barto_reward

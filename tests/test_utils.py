@@ -2,7 +2,8 @@
 
 import numpy as np
 
-from miniRL.utils import np_random, parse_reset_bound
+from miniRL.utils import parse_reset_bound
+from miniRL.random_utils import np_random
 
 
 def test_np_random_returns_generator_and_seed():

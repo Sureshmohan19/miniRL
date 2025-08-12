@@ -151,9 +151,7 @@ def test_registration_with_kwargs_and_metadata():
         name=name,
         entry_point="_dummy_env:DummyEnv",
         description="A test env with metadata.",
-        kwargs={
-            "metadata": {"version": "2.0", "testing": True}
-        }
+        metadata= {"version": "2.0", "testing": True}
     )
     
     metadata = get_metadata(name)

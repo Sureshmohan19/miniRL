@@ -11,11 +11,9 @@ register(
     entry_point="miniRL.envs.classic:MountainCar",
     description="A car on a one-dimensional track, between two mountains, must reach the flag on top of the mountain on the right.",
     max_steps=200,
-    kwargs={
-        "render_mode": "rgb_array",
-        "goal_velocity": 0,
-        "metadata": {"version": "1.0"}
-    }
+    render_mode= "rgb_array",
+    goal_velocity= 0,
+    metadata= {"version": "1.0"}
 )
 
 register(
@@ -23,9 +21,7 @@ register(
     entry_point="miniRL.envs.classic:CartPole",
     description="Classic CartPole balancing problem",
     max_steps=500,
-    kwargs={
-        "sutton_barto_reward": False,
-        "render_mode": "rgb_array",
-        "metadata": {"version": "1.0"}
-    }
+    render_mode= "rgb_array",
+    sutton_barto_reward= False,
+    metadata={"version": "1.0"}
 )

@@ -5,7 +5,7 @@ from typing import Any, Sequence, Generic
 import numpy as np
 from numpy.typing import DTypeLike
 
-from miniRL.utils import np_random
+from miniRL.random_utils import np_random
 from miniRL.types import SpaType
 
 __all__ = ["Space"]

@@ -12,8 +12,8 @@ from miniRL.types import ObsType, ActType, ArrayType
 from miniRL.envs.registry import EnvSpec
 from miniRL.spaces import Space
 from miniRL.core import Env
+from miniRL.random_utils import np_random
 from miniRL.utils import (
-    np_random, 
     batch_space, 
     batch_different_space, 
     is_space_dtype_shape_equiv,

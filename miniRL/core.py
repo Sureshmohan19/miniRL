@@ -9,8 +9,8 @@ import numpy as np
 
 from miniRL import spaces
 from miniRL.types import ObsType, ActType, WrapperObsType, WrapperActType
-from miniRL.utils import np_random
-from miniRL.envs.registry import EnvSpec
+from miniRL.random_utils import np_random
+from miniRL.spaces.spec import EnvSpec
 
 __all__ = ["Env", "Wrapper", "ObservationWrapper", "ActionWrapper", "RewardWrapper"]
 
