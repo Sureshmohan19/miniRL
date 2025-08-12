@@ -6,6 +6,7 @@ from miniRL.core import Env, Wrapper, ObservationWrapper, ActionWrapper, RewardW
 from miniRL.wrappers import StepLimit
 from miniRL.envs import EnvironmentRegistry
 from miniRL.registration import make, register
+from miniRL.vectors import VectorEnv, AutoReset, SyncVectorEnv, AsyncVectorEnv
 
 __all__ = [
     "Space", "Box", "Discrete",
@@ -14,4 +15,5 @@ __all__ = [
     "StepLimit",
     "EnvironmentRegistry",
     "make", "register",
+    "VectorEnv", "AutoReset", "SyncVectorEnv", "AsyncVectorEnv"
 ]

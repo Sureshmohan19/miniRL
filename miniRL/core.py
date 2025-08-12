@@ -10,13 +10,14 @@ import numpy as np
 from miniRL import spaces
 from miniRL.types import ObsType, ActType, WrapperObsType, WrapperActType
 from miniRL.utils import np_random
+from miniRL.envs.registry import EnvSpec
 
 __all__ = ["Env", "Wrapper", "ObservationWrapper", "ActionWrapper", "RewardWrapper"]
 
 class Env(ABC, Generic[ObsType, ActType]):
     metadata: dict[str, Any]
     render_mode: str | None = None
-    spec: None = None
+    spec: EnvSpec | None = None
     action_space: spaces.Space[ActType]
     observation_space: spaces.Space[ObsType]
     _np_random: np.random.Generator | None = None
@@ -82,6 +83,30 @@ class Env(ABC, Generic[ObsType, ActType]):
             return f"<{type(self).__name__} instance>"
         else:
             return f"<{type(self).__name__}<{self.spec.id}>>"
+        
+    def __enter__(self):
+        """Support with-statement"""
+        return self
+    
+    def __exit__(self, **args: Any):
+        """Support with-statement and close the env"""
+        self.close()
+        return False
+    
+    def has_wrapper_attr(self, name:str) -> bool:
+        """Check if name exists in the env"""
+        return hasattr(self, name)
+    
+    def get_wrapper_attr(self, name:str) -> Any:
+        """Get name from the env"""
+        return getattr(self, name)
+    
+    def set_wrapper_attr(self, name:str, value:Any, force:bool = True) ->bool:
+        """Sets the attribute name with value"""
+        if hasattr(self, name):
+            setattr(self, name, value)
+            return True
+        return False
         
 class Wrapper(Env[WrapperObsType, WrapperActType], Generic[WrapperObsType, WrapperActType, ObsType, ActType]):
     def __init__(
@@ -187,6 +212,35 @@ class Wrapper(Env[WrapperObsType, WrapperActType], Generic[WrapperObsType, Wrapp
     def render_mode(self) -> str | None:
         """Returns the base environment's render mode"""
         return self.env.render_mode
+    
+    def has_wrapper_attr(self, name: str) -> bool:
+        """Check whether name attr is either in env or wrapper env"""
+        if hasattr(self, name):
+            return True
+        else:
+            return self.env.has_wrapper_attr(name)
+        
+    def get_wrapper_attr(self, name: str) -> Any:
+        """Get name attr from wrapper class or env class"""
+        if hasattr(self, name):
+            return getattr(self, name)
+        else:
+            return self.env.get_wrapper_attr(self, name)
+        
+    def set_wrapper_attr(self, name: str, value: Any, force: bool = True) -> bool:
+        """Set the attribute name with the value"""
+        if hasattr(self, name):
+            setattr(self, name, value)
+            return True
+        else:
+            done = self.env.set_wrapper_attr(name, value, force=False)
+            if done:
+                return True
+            elif force:
+                setattr(self, name, value)
+                return True
+            else:
+                return False
     
 class ObservationWrapper(Wrapper[WrapperObsType, ActType, ObsType, ActType]):
     def __init__(self, env: Env[ObsType, ActType]):
